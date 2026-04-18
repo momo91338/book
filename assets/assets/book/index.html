@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Book Reader</title>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+
+/* ========== THEMES ========== */
+
+body {
+  background:#1a1a2e;
+  transition:0.3s;
+}
+
+body.light {
+  background:#eaeaea;
+}
+
+/* ========== PAGE WITH SCROLL ========== */
+
+.page {
+  background:#f5f0e8;
+  color:black;
+  border-radius:16px;
+
+  height:80vh;
+  overflow-y:auto;
+
+  padding:20px;
+  transition:0.4s;
+  backface-visibility:hidden;
+
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-start;
+}
+
+body.light .page {
+  background:white;
+  color:black;
+}
+
+/* Scrollbar */
+.page::-webkit-scrollbar {
+  width: 6px;
+}
+
+.page::-webkit-scrollbar-thumb {
+  background: #999;
+  border-radius: 10px;
+}
+
+/* ========== FLIP EFFECT ========== */
+
+.book {
+  perspective: 1500px;
+}
+
+.page-container {
+  transform-style: preserve-3d;
+  transition: transform 0.6s;
+}
+
+.flip-next {
+  transform: rotateY(-180deg);
+}
+
+.flip-prev {
+  transform: rotateY(180deg);
+}
+
+/* ========== SIDEBAR ========== */
+
+.sidebar {
+  position: fixed;
+  top:0;
+  right:0;
+  width:280px;
+  height:100%;
+  background:#16255e;
+  transform:translateX(100%);
+  transition:0.3s;
+  padding:20px;
+  overflow:auto;
+}
+
+.sidebar.open {
+  transform:translateX(0);
+}
+
+</style>
+</head>
+
+<body>
+
+<header class="flex justify-between p-4 bg-[#16213e] text-[#c9a84c]">
+  <button onclick="toggleTOC()">الفهرس</button>
+  <div id="title">غلاف</div>
+  <div class="flex gap-2">
+    <button onclick="toggleTheme()">🌙</button>
+    <button onclick="toggleBookmark()">🔖</button>
+  </div>
+</header>
+
+<div class="h-1 bg-[#16213e]">
+  <div id="progress" class="h-full bg-yellow-500" style="width:0%"></div>
+</div>
+
+<main class="p-2 book">
+  <div id="pageWrapper" class="page-container">
+    <div id="content" class="page"></div>
+  </div>
+</main>
+
+<nav class="flex justify-between p-4 text-white">
+  <button onclick="prev()">السابق</button>
+  <button onclick="next()">التالي</button>
+</nav>
+
+<div id="tocOverlay" class="fixed inset-0 bg-black/50 hidden" onclick="closeTOC()"></div>
+
+<div id="toc" class="sidebar">
+  <button onclick="closeTOC()" class="mb-4 bg-yellow-500 px-2 py-1">إغلاق</button>
+  <div id="tocList"></div>
+</div>
+
+<script>
+
+/* ================= BOOK ================= */
+
+const book = {
+  cover: {
+    image: "book/cover.png",
+    title: ""
+  },
+
+  intro: {
+    title: "📘 المقدمة",
+    path: "book/intro.html"
+  },
+
+chapters: [
+  {
+    title: "الفصل الأول: ابتسم… لأنك ما زلت هنا",
+    pages: [
+      "book/chapters/ch1/1.html",
+      "book/chapters/ch1/2.html",
+      "book/chapters/ch1/3.html",
+      "book/chapters/ch1/4.html",
+      "book/chapters/ch1/5.html",
+      "book/chapters/ch1/6.html",
+      "book/chapters/ch1/7.html",
+      "book/chapters/ch1/8.html",
+      "book/chapters/ch1/9.html",
+      "book/chapters/ch1/10.html"
+    ]
+  },
+
+  {
+    title: "الفصل الثاني: ابتسم رغم الألم",
+    pages: [
+      "book/chapters/ch2/1.html",
+      "book/chapters/ch2/2.html",
+      "book/chapters/ch2/3.html",
+      "book/chapters/ch2/4.html",
+      "book/chapters/ch2/5.html",
+      "book/chapters/ch2/6.html",
+      "book/chapters/ch2/7.html",
+      "book/chapters/ch2/8.html",
+      "book/chapters/ch2/9.html",
+      "book/chapters/ch2/10.html"
+    ]
+  },
+
+  {
+    title: "الفصل الثالث: ابتسم لنفسك أولاً",
+    pages: [
+      "book/chapters/ch3/1.html",
+      "book/chapters/ch3/2.html",
+      "book/chapters/ch3/3.html",
+      "book/chapters/ch3/4.html",
+      "book/chapters/ch3/5.html",
+      "book/chapters/ch3/6.html",
+      "book/chapters/ch3/7.html",
+      "book/chapters/ch3/8.html",
+      "book/chapters/ch3/9.html",
+      "book/chapters/ch3/10.html"
+    ]
+  },
+
+  {
+    title: "الفصل الرابع: ابتسم للحياة",
+    pages: [
+      "book/chapters/ch4/1.html",
+      "book/chapters/ch4/2.html",
+      "book/chapters/ch4/3.html",
+      "book/chapters/ch4/4.html",
+      "book/chapters/ch4/5.html",
+      "book/chapters/ch4/6.html",
+      "book/chapters/ch4/7.html",
+      "book/chapters/ch4/8.html",
+      "book/chapters/ch4/9.html",
+      "book/chapters/ch4/10.html"
+    ]
+  },
+
+  {
+    title: "الفصل الخامس: ابتسم رغم الظروف",
+    pages: [
+      "book/chapters/ch5/1.html",
+      "book/chapters/ch5/2.html",
+      "book/chapters/ch5/3.html",
+      "book/chapters/ch5/4.html",
+      "book/chapters/ch5/5.html",
+      "book/chapters/ch5/6.html",
+      "book/chapters/ch5/7.html",
+      "book/chapters/ch5/8.html",
+      "book/chapters/ch5/9.html",
+      "book/chapters/ch5/10.html"
+    ]
+  },
+
+  {
+    title: "لفصل الخامس: ابتسم لرحلتك",
+    pages: [
+      "book/chapters/ch6/1.html",
+      "book/chapters/ch6/2.html",
+      "book/chapters/ch6/3.html",
+      "book/chapters/ch6/4.html",
+      "book/chapters/ch6/5.html",
+      "book/chapters/ch6/6.html",
+      "book/chapters/ch6/7.html",
+      "book/chapters/ch6/8.html",
+      "book/chapters/ch6/9.html",
+      "book/chapters/ch6/10.html"
+    ]
+  },
+
+  {
+    title: "الفصل السابع: ابتسم لنفسك أولاً",
+    pages: [
+      "book/chapters/ch7/1.html",
+      "book/chapters/ch7/2.html",
+      "book/chapters/ch7/3.html",
+      "book/chapters/ch7/4.html",
+      "book/chapters/ch7/5.html",
+      "book/chapters/ch7/6.html",
+      "book/chapters/ch7/7.html",
+      "book/chapters/ch7/8.html",
+      "book/chapters/ch7/9.html",
+      "book/chapters/ch7/10.html"
+    ]
+  },
+
+  {
+    title: "الفصل الثامن: عندما تتغير… يتغير كل شيء",
+    pages: [
+      "book/chapters/ch8/1.html",
+      "book/chapters/ch8/2.html",
+      "book/chapters/ch8/3.html",
+      "book/chapters/ch8/4.html",
+      "book/chapters/ch8/5.html",
+      "book/chapters/ch8/6.html",
+      "book/chapters/ch8/7.html",
+      "book/chapters/ch8/8.html",
+      "book/chapters/ch8/9.html",
+      "book/chapters/ch8/10.html"
+    ]
+  },
+
+  {
+    title: "الفصل التاسع: قوة الأمل عندما يختفي كل شيء",
+    pages: [
+      "book/chapters/ch9/1.html",
+      "book/chapters/ch9/2.html",
+      "book/chapters/ch9/3.html",
+      "book/chapters/ch9/4.html",
+      "book/chapters/ch9/5.html",
+      "book/chapters/ch9/6.html",
+      "book/chapters/ch9/7.html",
+      "book/chapters/ch9/8.html",
+      "book/chapters/ch9/9.html",
+      "book/chapters/ch9/10.html"
+    ]
+  },
+
+  {
+    title: "الفصل العاشر: الحياة كما هي… لا كما نتخيلها",
+    pages: [
+      "book/chapters/ch10/1.html",
+      "book/chapters/ch10/2.html",
+      "book/chapters/ch10/3.html",
+      "book/chapters/ch10/4.html",
+      "book/chapters/ch10/5.html",
+      "book/chapters/ch10/6.html",
+      "book/chapters/ch10/7.html",
+      "book/chapters/ch10/8.html",
+      "book/chapters/ch10/9.html",
+      "book/chapters/ch10/10.html"
+    ]
+  }
+]; 
+  conclusion: {
+    title: "🏁 الخاتمة",
+    path: "book/conclusion.html"
+  }
+};
+
+/* ================= GLOBAL ================= */
+
+let flatPages = [];
+let currentIndex = 0;
+
+/* ================= BUILD ================= */
+
+function buildPages(){
+
+  flatPages = [];
+
+  flatPages.push({
+    type:"cover",
+    content:`
+    <div class="flex flex-col items-center justify-start h-full text-center pt-10">
+      <img src="${book.cover.image}" class="mx-auto max-h-[350px] rounded-xl shadow-lg"/>
+      <h1 class="text-2xl mt-6 font-bold text-[#c9a84c]">${book.cover.title}</h1>
+      <p class="mt-2 text-sm text-gray-500">اضغط التالي لبدء القراءة</p>
+    </div>`
+  });
+
+  flatPages.push({
+    type:"static",
+    title: book.intro.title,
+    path: book.intro.path
+  });
+
+  book.chapters.forEach(ch=>{
+    ch.pages.forEach(p=>{
+      flatPages.push({
+        type:"chapter",
+        title: ch.title,
+        path:p
+      });
+    });
+  });
+
+  flatPages.push({
+    type:"static",
+    title: book.conclusion.title,
+    path: book.conclusion.path
+  });
+
+}
+
+/* ================= LOAD ================= */
+
+async function loadPageContent(path){
+  try{
+    const res = await fetch(path);
+    return await res.text();
+  }catch{
+    return "<h2>⚠️ الصفحة غير موجودة</h2>";
+  }
+}
+
+/* ================= SHOW ================= */
+
+async function showPage(i, direction="next"){
+
+  const wrapper = document.getElementById("pageWrapper");
+  wrapper.classList.remove("flip-next","flip-prev");
+
+  if(direction === "next"){
+    wrapper.classList.add("flip-next");
+  }else{
+    wrapper.classList.add("flip-prev");
+  }
+
+  setTimeout(async ()=>{
+
+    currentIndex = i;
+    const page = flatPages[i];
+
+    if(page.type === "cover"){
+      content.innerHTML = page.content;
+      title.innerText = "📖 الغلاف";
+    } else {
+      content.innerHTML = await loadPageContent(page.path);
+      title.innerText = page.title;
+    }
+
+    updateProgress();
+    wrapper.classList.remove("flip-next","flip-prev");
+
+  }, 300);
+}
+
+/* ================= NAV ================= */
+
+function next(){
+  if(currentIndex < flatPages.length-1){
+    showPage(currentIndex+1,"next");
+  }
+}
+
+function prev(){
+  if(currentIndex > 0){
+    showPage(currentIndex-1,"prev");
+  }
+}
+
+/* ================= PROGRESS ================= */
+
+function updateProgress(){
+  const percent = ((currentIndex+1)/flatPages.length)*100;
+  progress.style.width = percent+"%";
+}
+
+/* ================= THEME ================= */
+
+function toggleTheme(){
+  document.body.classList.toggle("light");
+}
+
+/* ================= TOC ================= */
+
+function renderTOC(){
+
+  const toc = document.getElementById("tocList");
+  toc.innerHTML = "";
+
+  const introBtn = document.createElement("button");
+  introBtn.innerText = book.intro.title;
+  introBtn.className = "block w-full text-right p-2 mb-2 bg-[#0f3460] text-white";
+
+  introBtn.onclick = ()=>{
+    showPage(1);
+    closeTOC();
+  };
+
+  toc.appendChild(introBtn);
+
+  let indexPointer = 2;
+
+  book.chapters.forEach(ch=>{
+    const btn = document.createElement("button");
+    btn.innerText = ch.title;
+    btn.className = "block w-full text-right p-2 mb-2 bg-[#1a1a2e] text-[#c9a84c]";
+
+    const target = indexPointer;
+
+    btn.onclick = ()=>{
+      showPage(target);
+      closeTOC();
+    };
+
+    toc.appendChild(btn);
+    indexPointer += ch.pages.length;
+  });
+
+  const conclusionBtn = document.createElement("button");
+  conclusionBtn.innerText = book.conclusion.title;
+  conclusionBtn.className = "block w-full text-right p-2 mb-2 bg-[#533483] text-white";
+
+  conclusionBtn.onclick = ()=>{
+    showPage(flatPages.length - 1);
+    closeTOC();
+  };
+
+  toc.appendChild(conclusionBtn);
+}
+
+/* ================= TOC CONTROL ================= */
+
+function toggleTOC(){
+  toc.classList.add("open");
+  tocOverlay.classList.remove("hidden");
+}
+
+function closeTOC(){
+  toc.classList.remove("open");
+  tocOverlay.classList.add("hidden");
+}
+
+/* ================= BOOKMARK ================= */
+
+function toggleBookmark(){
+  localStorage.setItem("bookmark", currentIndex);
+  alert("✅ تم حفظ الصفحة");
+}
+
+/* ================= LOAD BOOKMARK ================= */
+
+function loadBookmark(){
+
+  const firstOpen = localStorage.getItem("firstOpen");
+
+  if(!firstOpen){
+    localStorage.setItem("firstOpen", "true");
+    showPage(0);
+    return;
+  }
+
+  const saved = localStorage.getItem("bookmark");
+
+  if(saved){
+    showPage(parseInt(saved));
+  }else{
+    showPage(0);
+  }
+}
+
+/* ================= INIT ================= */
+
+buildPages();
+renderTOC();
+loadBookmark();
+
+</script>
+
+</body>
+</html>
